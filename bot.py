@@ -41,36 +41,32 @@ def parse_text_to_hijri(text):
 
 def detect_and_convert(text):
     text = text.strip().lower()
-
-    # الكلمات الذكية
     if text in ["اليوم", "today"]:
         g = Gregorian.today()
         h = Hijri.from_gregorian(g.year, g.month, g.day)
     elif text in ["غدًا", "غدا", "غداً", "tomorrow"]:
-        g = Gregorian.today().to_date() + timedelta(days=1)
-        g = Gregorian(g.year, g.month, g.day)
+        g_date = Gregorian.today().to_date() + timedelta(days=1)
+        g = Gregorian(g_date.year, g_date.month, g_date.day)
         h = Hijri.from_gregorian(g.year, g.month, g.day)
-    elif text in ["أمس", "امس", "yesterday"]:
-        g = Gregorian.today().to_date() - timedelta(days=1)
-        g = Gregorian(g.year, g.month, g.day)
+    elif text in ["أمس", "yesterday", "امس"]:
+        g_date = Gregorian.today().to_date() - timedelta(days=1)
+        g = Gregorian(g_date.year, g_date.month, g_date.day)
         h = Hijri.from_gregorian(g.year, g.month, g.day)
     else:
-        # محاولة تلقائية
         try:
             g = parse_gregorian(text)
             h = Hijri.from_gregorian(g.year, g.month, g.day)
-        except:
+        except Exception:
             try:
                 h = parse_hijri(text)
                 g = h.to_gregorian()
-            except:
+            except Exception:
                 try:
                     g = parse_text_to_gregorian(text)
                     h = Hijri.from_gregorian(g.year, g.month, g.day)
-                except:
+                except Exception:
                     h = parse_text_to_hijri(text)
                     g = h.to_gregorian()
-
     weekday = g.to_date().strftime('%A')
     days_ar = {
         "Saturday": "السبت", "Sunday": "الأحد", "Monday": "الاثنين",
@@ -93,7 +89,7 @@ def parse_gregorian(text):
             else:
                 day, month, year = int(groups[0]), int(groups[1]), int(groups[2])
             return Gregorian(year, month, day)
-    raise ValueError
+    raise ValueError("صيغة التاريخ الميلادي غير صحيحة.")
 
 def parse_hijri(text):
     patterns = [
@@ -109,22 +105,19 @@ def parse_hijri(text):
             else:
                 day, month, year = int(groups[0]), int(groups[1]), int(groups[2])
             return Hijri(year, month, day)
-    raise ValueError
+    raise ValueError("صيغة التاريخ الهجري غير صحيحة.")
 
 @dp.message_handler(commands=['start'])
 async def welcome(message: types.Message):
-    await message.reply("أهلًا بك! 🗓️
-أرسل أي تاريخ هجري أو ميلادي وسأقوم بتحويله فورًا!")
+    await message.reply("أهلًا بك! 🗓️\nأرسل أي تاريخ هجري أو ميلادي وسأقوم بتحويله فورًا!")
 
 @dp.message_handler()
 async def convert(message: types.Message):
     try:
         g, h, weekday = detect_and_convert(message.text)
         await message.reply(
-            f"📆 الميلادي: {g.year}-{g.month:02d}-{g.day:02d}
-"
-            f"🕌 الهجري: {h.year}-{h.month:02d}-{h.day:02d}
-"
+            f"📆 الميلادي: {g.year}-{g.month:02d}-{g.day:02d}\n"
+            f"🕌 الهجري: {h.year}-{h.month:02d}-{h.day:02d}\n"
             f"📅 اليوم: {weekday}"
         )
     except Exception as e:
@@ -132,3 +125,40 @@ async def convert(message: types.Message):
 
 if __name__ == "__main__":
     executor.start_polling(dp, skip_updates=True)
+'''
+
+requirements = '''aiogram==2.25.2
+hijri-converter==2.2.4
+'''
+
+readme = '''# Date Converter Bot PRO (Advanced)
+
+يدعم تحويل التاريخ هجري ↔ ميلادي، ويقبل كلمات مثل 'اليوم', 'غدًا', 'أمس' والتواريخ النصية.
+'''
+
+gitignore = '''__pycache__/
+.env
+*.pyc
+'''
+
+with open(os.path.join(folder, "bot.py"), "w", encoding="utf-8") as f:
+    f.write(bot_code)
+
+with open(os.path.join(folder, "requirements.txt"), "w", encoding="utf-8") as f:
+    f.write(requirements)
+
+with open(os.path.join(folder, "README.md"), "w", encoding="utf-8") as f:
+    f.write(readme)
+
+with open(os.path.join(folder, ".gitignore"), "w", encoding="utf-8") as f:
+    f.write(gitignore)
+
+zip_path = f"/mnt/data/{folder}.zip"
+with zipfile.ZipFile(zip_path, 'w') as zipf:
+    for root, _, files in os.walk(folder):
+        for file in files:
+            full_path = os.path.join(root, file)
+            arcname = os.path.relpath(full_path, folder)
+            zipf.write(full_path, arcname)
+
+zip_path
