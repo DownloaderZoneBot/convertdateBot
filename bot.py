@@ -11,27 +11,6 @@ logging.basicConfig(level=logging.INFO)
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher(bot)
 
-# نظام الحماية (Rate Limiting)
-user_requests = {}
-RATE_LIMIT_SECONDS = 10
-MAX_REQUESTS = 5
-
-def rate_limit(user_id):
-    now = datetime.now()
-    if user_id in user_requests:
-        last_time, count = user_requests[user_id]
-        if (now - last_time).total_seconds() < RATE_LIMIT_SECONDS:
-            if count >= MAX_REQUESTS:
-                return False
-            else:
-                user_requests[user_id] = (last_time, count + 1)
-        else:
-            user_requests[user_id] = (now, 1)
-    else:
-        user_requests[user_id] = (now, 1)
-    return True
-
-# تعريف أسماء الشهور العربية (للتاريخ الميلادي والهجري)
 ARABIC_MONTHS = {
     "يناير": 1, "فبراير": 2, "مارس": 3, "إبريل": 4, "ابريل": 4,
     "مايو": 5, "يونيو": 6, "يوليو": 7, "أغسطس": 8, "اغسطس": 8,
@@ -63,32 +42,32 @@ def parse_text_to_hijri(text):
 def detect_and_convert(text):
     text = text.strip().lower()
 
-    # دعم الكلمات الذكية
+    # الكلمات الذكية
     if text in ["اليوم", "today"]:
         g = Gregorian.today()
         h = Hijri.from_gregorian(g.year, g.month, g.day)
     elif text in ["غدًا", "غدا", "غداً", "tomorrow"]:
-        g_date = Gregorian.today().to_date() + timedelta(days=1)
-        g = Gregorian(g_date.year, g_date.month, g_date.day)
+        g = Gregorian.today().to_date() + timedelta(days=1)
+        g = Gregorian(g.year, g.month, g.day)
         h = Hijri.from_gregorian(g.year, g.month, g.day)
-    elif text in ["أمس", "yesterday", "امس"]:
-        g_date = Gregorian.today().to_date() - timedelta(days=1)
-        g = Gregorian(g_date.year, g_date.month, g_date.day)
+    elif text in ["أمس", "امس", "yesterday"]:
+        g = Gregorian.today().to_date() - timedelta(days=1)
+        g = Gregorian(g.year, g.month, g.day)
         h = Hijri.from_gregorian(g.year, g.month, g.day)
     else:
-        # محاولة التفسير التلقائي
+        # محاولة تلقائية
         try:
             g = parse_gregorian(text)
             h = Hijri.from_gregorian(g.year, g.month, g.day)
-        except Exception:
+        except:
             try:
                 h = parse_hijri(text)
                 g = h.to_gregorian()
-            except Exception:
+            except:
                 try:
                     g = parse_text_to_gregorian(text)
                     h = Hijri.from_gregorian(g.year, g.month, g.day)
-                except Exception:
+                except:
                     h = parse_text_to_hijri(text)
                     g = h.to_gregorian()
 
@@ -114,7 +93,7 @@ def parse_gregorian(text):
             else:
                 day, month, year = int(groups[0]), int(groups[1]), int(groups[2])
             return Gregorian(year, month, day)
-    raise ValueError("صيغة التاريخ الميلادي غير صحيحة.")
+    raise ValueError
 
 def parse_hijri(text):
     patterns = [
@@ -130,23 +109,22 @@ def parse_hijri(text):
             else:
                 day, month, year = int(groups[0]), int(groups[1]), int(groups[2])
             return Hijri(year, month, day)
-    raise ValueError("صيغة التاريخ الهجري غير صحيحة.")
+    raise ValueError
 
 @dp.message_handler(commands=['start'])
 async def welcome(message: types.Message):
-    await message.reply("أهلًا بك في بوت تحويل التاريخ!\nأرسل لي تاريخًا هجريًا أو ميلادي بأي صيغة (مثلاً: 25/3/2025 أو 1445-09-15) أو كلمات مثل 'اليوم', 'غدًا', 'أمس'.")
+    await message.reply("أهلًا بك! 🗓️
+أرسل أي تاريخ هجري أو ميلادي وسأقوم بتحويله فورًا!")
 
 @dp.message_handler()
 async def convert(message: types.Message):
-    # حماية Rate Limiting
-    if not rate_limit(message.from_user.id):
-        await message.reply("⚠️ الرجاء الانتظار قليلاً قبل إرسال طلبات جديدة.")
-        return
     try:
         g, h, weekday = detect_and_convert(message.text)
         await message.reply(
-            f"📆 الميلادي: {g.year}-{g.month:02d}-{g.day:02d}\n"
-            f"🕌 الهجري: {h.year}-{h.month:02d}-{h.day:02d}\n"
+            f"📆 الميلادي: {g.year}-{g.month:02d}-{g.day:02d}
+"
+            f"🕌 الهجري: {h.year}-{h.month:02d}-{h.day:02d}
+"
             f"📅 اليوم: {weekday}"
         )
     except Exception as e:
@@ -154,33 +132,3 @@ async def convert(message: types.Message):
 
 if __name__ == "__main__":
     executor.start_polling(dp, skip_updates=True)
-'''
-
-requirements = '''aiogram==2.25.2
-hijri-converter==2.2.4
-'''
-
-readme = "# Date Converter Bot PRO (Advanced)\n\nيدعم تحويل التاريخ هجري ↔ ميلادي، مع دعم الكلمات الذكية مثل 'اليوم', 'غدًا', 'أمس'، وتحكم معدل الطلب (Rate Limiting) لحماية الخدمة."
-gitignore = "__pycache__/\n.env\n*.pyc\n"
-
-with open(os.path.join(folder, "bot.py"), "w", encoding="utf-8") as f:
-    f.write(bot_code)
-
-with open(os.path.join(folder, "requirements.txt"), "w", encoding="utf-8") as f:
-    f.write(requirements)
-
-with open(os.path.join(folder, "README.md"), "w", encoding="utf-8") as f:
-    f.write(readme)
-
-with open(os.path.join(folder, ".gitignore"), "w", encoding="utf-8") as f:
-    f.write(gitignore)
-
-zip_path = f"/mnt/data/{folder}.zip"
-with zipfile.ZipFile(zip_path, 'w') as zipf:
-    for root, _, files in os.walk(folder):
-        for file in files:
-            full_path = os.path.join(root, file)
-            arcname = os.path.relpath(full_path, folder)
-            zipf.write(full_path, arcname)
-
-zip_path
